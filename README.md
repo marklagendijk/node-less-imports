@@ -1,4 +1,8 @@
-node-less-imports
-=================
+# node-less-imports
+Simple utility which recursively finds all the files which are @import-ed by a LESS file.
 
-Simple utility to get a list of @import references from a .less file.
+## Usage
+``` javascript
+var lessImports = require('less-imports');
+var filePaths = lessImports.findImports('/less1.less');
+```

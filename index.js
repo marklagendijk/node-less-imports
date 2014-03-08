@@ -1,61 +1,65 @@
 var fs = require('fs');
 var path = require('path');
+var _ = require('lodash');
 
 var lessImports = {
     /**
-     * Finds the imports in a LESS file.
+     * Recursivley finds all the @import paths in a LESS file.
      * @param {string} filePath - The path of the LESS file.
-     * @param {string} [contents] - The contents of the LESS file. If null or undefined, fs.readFileSync is used to read the file.
-     * @param {boolean} [returnRelativePaths=false] - Return the paths as specified in the @imports, instead of resolving them to absolute paths.
      * @returns {Array.<string>}
      */
-    findImports: function(filePath, contents, returnRelativePaths){
-        if(contents === undefined || contents === null){
-            contents = fs.readFileSync(filePath);
-        }
-        var paths = findRelativeImports(contents);
-        if(returnRelativePaths){
-            return paths;
-        }
-        else{
-            return resolveRelativePaths(filePath, paths);
-        }
-
+    findImports: function(filePath){
+        return findImports(filePath, []);
     },
     IMPORT_REGEX: /@import.+?["'](.+?)["']/g
 };
 
 /**
- * Finds all @import paths, using a nice RegEx
- * @param lessCode
+ * Recursivley finds all @import paths of a LESS file, using a nice RegEx
+ * @param {string} filePath - The path of the LESS file.
+ * @param {Array.<string>} result
  * @returns {Array.<string>}
  */
-function findRelativeImports(lessCode){
-    // Find all matches.
-    var matches = [];
-    var match;
-    while(match = lessImports.IMPORT_REGEX.exec(lessCode)){
-        matches.push(match[1]);
-    }
+function findImports(filePath, result){
+    var importPaths = getImportPaths(filePath);
+    var absolutePaths = resolveImportPaths(filePath, importPaths);
+    absolutePaths.forEach(function(path){
+        if(!_.contains(result, path)){
+            result.push(path);
+            findImports(path, result);
+        }
+    });
 
-    // Add '.less' extension, if no extension.
-    return matches.map(function(relativePath){
+    return result;
+}
+/**
+ * Finds all the @import paths in a LESS file.
+ * @param {string} filePath - The path of the LESS file.
+ */
+function getImportPaths(filePath){
+    var importPaths = [];
+    try{
+        var contents = fs.readFileSync(filePath);
+        var match;
+        while(match = lessImports.IMPORT_REGEX.exec(contents)){
+            importPaths.push(match[1]);
+        }
+    }
+    catch(exception){}
+    return importPaths;
+}
+/**
+ * Resolves @import paths to absolute file paths.
+ * @param {string} filePath - The path of the LESS file.
+ * @param {Array.<string>} importPaths - The array of @import paths.
+ * @returns {Array.<string>}
+ */
+function resolveImportPaths(filePath, importPaths){
+    var dir = path.dirname(filePath);
+    return importPaths.map(function(relativePath){
         if(!path.extname(relativePath)){
             relativePath += '.less';
         }
-        return relativePath;
-    });
-}
-
-/**
- * Resolves relative paths to absolute paths.
- * @param filePath - The file which the paths are relative to.
- * @param relativePaths - The paths which should be resolved.
- * @returns {Array.<string>}
- */
-function resolveRelativePaths(filePath, relativePaths){
-    var dir = path.dirname(filePath);
-    return relativePaths.map(function(relativePath){
         return path.resolve(dir, relativePath);
     });
 }
