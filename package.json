@@ -1,5 +1,5 @@
 {
-  "name": "node-less-imports",
+  "name": "less-imports",
   "version": "1.0.0",
   "description": "Simple utility to get a list of @import references from a .less file.",
   "main": "index.js",
